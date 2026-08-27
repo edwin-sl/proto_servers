@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package studentcrud;
+
+service StudentCRUD {
+  rpc RegisterStudent (StudentInfo) returns (StudentRecord);
+  rpc GetStudents (StudentFilter) returns (StudentListReply);
+  rpc GetStudent (StudentIdRequest) returns (StudentRecord);
+}
+
+message StudentInfo {
+  string id = 1;
+  string name = 2;
+  string email = 3;
+  string connectionId = 4;
+}
+
+message StudentFilter {
+  string id = 1;
+}
+
+message StudentIdRequest {
+  string id = 1;
+}
+
+message StudentRecord {
+  string id = 1;
+  string name = 2;
+  string email = 3;
+  string connectionId = 4;
+  string connectedAt = 5;
+}
+
+message StudentListReply {
+  repeated StudentRecord students = 1;
+}
