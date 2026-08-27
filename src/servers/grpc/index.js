@@ -25,7 +25,7 @@ function start(ports = {}) {
         id: call.request.id,
         name: call.request.name,
         email: call.request.email,
-        connectionId: call.request.connectionId || `grpc-${Date.now()}`
+        connectionId: `grpc-${Date.now()}`
       };
 
       logRequest('gRPC RegisterStudent', payload);

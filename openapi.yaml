@@ -1,0 +1,237 @@
+openapi: 3.0.3
+info:
+  title: Proto Servers Student API
+  description: REST API for managing students across the proto_servers project.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns the health status of the API.
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /students:
+    get:
+      summary: List students
+      description: Returns all students known by the in-memory store.
+      responses:
+        '200':
+          description: Successful list operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentListResponse'
+    post:
+      summary: Register a student
+      description: Creates or updates a student record.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudentInput'
+      responses:
+        '200':
+          description: Student registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentRegistrationResponse'
+
+  /students/{id}:
+    get:
+      summary: Get a student by ID
+      description: Returns a single student record by ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Student ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Student record found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentByIdResponse'
+    delete:
+      summary: Delete a student by ID
+      description: Removes a student record by ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Student ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Student deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentDeleteResponse'
+
+  /echo:
+    post:
+      summary: Echo request payload
+      description: Returns the payload sent by the client.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Echo response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EchoResponse'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          example: ok
+        timestamp:
+          type: string
+          format: date-time
+          example: 2026-08-27T00:00:00.000Z
+
+    Student:
+      type: object
+      required:
+        - id
+        - name
+        - email
+        - connectionId
+        - connectedAt
+      properties:
+        id:
+          type: string
+          example: S100
+        name:
+          type: string
+          example: Ana
+        email:
+          type: string
+          nullable: true
+          example: ana@example.com
+        connectionId:
+          type: string
+          nullable: true
+          example: rest-1
+        connectedAt:
+          type: string
+          format: date-time
+          example: 2026-08-27T00:00:00.000Z
+
+    StudentInput:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          example: S100
+        name:
+          type: string
+          example: Ana
+        email:
+          type: string
+          nullable: true
+          example: ana@example.com
+        connectionId:
+          type: string
+          nullable: true
+          example: rest-1
+
+    StudentListResponse:
+      type: object
+      required:
+        - students
+        - count
+      properties:
+        students:
+          type: array
+          items:
+            $ref: '#/components/schemas/Student'
+        count:
+          type: integer
+          example: 1
+
+    StudentByIdResponse:
+      type: object
+      required:
+        - student
+      properties:
+        student:
+          $ref: '#/components/schemas/Student'
+
+    StudentRegistrationResponse:
+      type: object
+      required:
+        - ok
+        - student
+        - students
+      properties:
+        ok:
+          type: boolean
+          example: true
+        student:
+          $ref: '#/components/schemas/Student'
+        students:
+          type: array
+          items:
+            $ref: '#/components/schemas/Student'
+
+    StudentDeleteResponse:
+      type: object
+      required:
+        - ok
+        - removed
+        - students
+      properties:
+        ok:
+          type: boolean
+          example: true
+        removed:
+          $ref: '#/components/schemas/Student'
+        students:
+          type: array
+          items:
+            $ref: '#/components/schemas/Student'
+
+    EchoResponse:
+      type: object
+      required:
+        - received
+        - message
+      properties:
+        received:
+          type: object
+          additionalProperties: true
+        message:
+          type: string
+          example: REST request received successfully

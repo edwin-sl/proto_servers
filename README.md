@@ -1,14 +1,14 @@
-# Multi-Protocol Node.js Server
+# Multi-Protocol Student Server
 
-This project starts a Node.js server that exposes the following protocols:
+This project exposes the same in-memory student store through multiple protocols:
 
-- REST API on port 3000
-- WebSocket server on port 8080 at `/ws`
-- gRPC server on port 50051
-- GraphQL server on port 3000 at `/graphql`
-- MQTT client that subscribes/publishes to a Mosquitto broker on `mqtt://localhost:1883`
+- REST over HTTP
+- GraphQL on the same HTTP server at `/graphql`
+- WebSocket at `/ws`
+- gRPC using `src/protos/student_crud.proto`
+- MQTT publish/subscribe client
 
-The application stores student connection data in an in-memory array instead of a database and logs every incoming request and outgoing response.
+Data is stored in memory in `src/studentStore.js`, and all requests/responses are logged by `src/logger.js`.
 
 ## Install
 
@@ -22,29 +22,107 @@ npm install
 npm start
 ```
 
-Make sure a Mosquitto broker is running locally before starting the MQTT client.
+By default the services start with:
 
-## Student tracking endpoints
+- HTTP/REST + GraphQL: `http://localhost:3000`
+- WebSocket: `ws://localhost:8080/ws`
+- gRPC: `localhost:50051`
+- MQTT: `mqtt://localhost:1883`
 
-### REST
+## Environment variables
+
+The server reads these environment variables:
+
+```bash
+HTTP_PORT=3000
+WS_PORT=8080
+GRPC_PORT=50051
+MQTT_URL=mqtt://localhost
+MQTT_PORT=1883
+```
+
+Notes:
+- GraphQL uses the same HTTP port as REST.
+- The MQTT broker URL is built from `MQTT_URL` and `MQTT_PORT` in `src/servers/mqtt/index.js`.
+
+## REST API
+
+Base URL: `http://localhost:3000`
+
+### Health
 
 ```bash
 curl http://localhost:3000/health
-curl -X POST http://localhost:3000/students/register \
-  -H "Content-Type: application/json" \
-  -d '{"protocol":"REST","studentId":"S100","name":"Ana","email":"ana@example.com"}'
+```
+
+### Get all students
+
+```bash
 curl http://localhost:3000/students
 ```
 
-### GraphQL
+### Get one student by ID
+
+```bash
+curl http://localhost:3000/students/12345
+```
+
+### Register a student
+
+```bash
+curl -X POST http://localhost:3000/students \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "S100",
+    "name": "Ana",
+    "email": "ana@example.com",
+    "connectionId": "rest-1"
+  }'
+```
+
+### Delete a student
+
+```bash
+curl -X DELETE http://localhost:3000/students/S100
+```
+
+### Echo
+
+```bash
+curl -X POST http://localhost:3000/echo \
+  -H "Content-Type: application/json" \
+  -d '{"message":"hello"}'
+```
+
+## GraphQL
+
+GraphQL is mounted at `http://localhost:3000/graphql`.
+
+### Query students
 
 ```bash
 curl -X POST http://localhost:3000/graphql \
   -H "Content-Type: application/json" \
-  -d '{"query":"mutation { registerStudent(protocol: \"GraphQL\", studentId: \"G100\", name: \"Luis\", email: \"luis@example.com\") { studentId name protocol } }"}'
+  -d '{
+    "query": "{ students { id name email connectionId connectedAt } }"
+  }'
 ```
 
-### WebSocket
+### Register a student
+
+```bash
+curl -X POST http://localhost:3000/graphql \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "mutation { registerStudent(id: \"G100\", name: \"Luis\", email: \"luis@example.com\") { id name email } }"
+  }'
+```
+
+## WebSocket
+
+Endpoint: `ws://localhost:8080/ws`
+
+Client example:
 
 ```js
 const WebSocket = require('ws');
@@ -53,7 +131,7 @@ const socket = new WebSocket('ws://localhost:8080/ws');
 socket.on('open', () => {
   socket.send(JSON.stringify({
     action: 'register',
-    studentId: 'W100',
+    id: 'W100',
     name: 'Maria',
     email: 'maria@example.com'
   }));
@@ -64,23 +142,42 @@ socket.on('message', (data) => {
 });
 ```
 
-### gRPC
+Supported actions:
+- `register`
+- `getStudents`
+
+## gRPC
+
+Proto file: `src/protos/student_crud.proto`
+
+Service: `studentcrud.StudentCRUD`
+
+Available RPCs:
+- `RegisterStudent`
+- `GetStudents`
+- `GetStudent`
+
+Example with Node.js:
 
 ```bash
-node -e "const grpc = require('@grpc/grpc-js'); const protoLoader = require('@grpc/proto-loader'); const path = require('path'); const pkg = protoLoader.loadSync(path.join(__dirname, 'src/protos/hello.proto'), { keepCase: true, longs: String, enums: String, defaults: true, oneofs: true }); const Greeter = grpc.loadPackageDefinition(pkg).helloworld.Greeter; const client = new Greeter('localhost:50051', grpc.credentials.createInsecure()); client.RegisterStudent({ protocol: 'gRPC', studentId: 'G100', name: 'Luis', email: 'luis@example.com' }, (err, res) => { if (err) throw err; console.log(res); });"
+node -e "const grpc = require('@grpc/grpc-js'); const protoLoader = require('@grpc/proto-loader'); const path = require('path'); const pkg = protoLoader.loadSync(path.join(__dirname, 'src/protos/student_crud.proto'), { keepCase: true, longs: String, enums: String, defaults: true, oneofs: true }); const StudentCRUD = grpc.loadPackageDefinition(pkg).studentcrud.StudentCRUD; const client = new StudentCRUD('localhost:50051', grpc.credentials.createInsecure()); client.RegisterStudent({ id: 'G100', name: 'Luis', email: 'luis@example.com' }, (err, res) => { if (err) throw err; console.log(res); });"
 ```
 
-### MQTT
+## MQTT
+
+The app connects to a broker as a client and subscribes to the `students` topic.
+
+Example:
 
 ```js
 const mqtt = require('mqtt');
 const client = mqtt.connect('mqtt://localhost:1883');
 
 client.on('connect', () => {
-  client.subscribe('proto_servers/students');
-  client.publish('proto_servers/students', JSON.stringify({
+  client.subscribe('students');
+  client.publish('students', JSON.stringify({
     action: 'register',
-    studentId: 'M100',
+    id: 'M100',
     name: 'Nora',
     email: 'nora@example.com'
   }));
@@ -91,9 +188,15 @@ client.on('message', (topic, message) => {
 });
 ```
 
+Supported MQTT actions:
+- `register`
+- `getStudents`
+
+The response is published to the `students/response` topic.
+
 ## Notes
 
-- The server is intentionally simple and designed for local development and learning.
-- Student connection data is kept in `src/studentStore.js` as an in-memory array.
-- The MQTT implementation is a subscriber/publisher only; it does not start a broker.
-- You can change the ports by setting environment variables such as `HTTP_PORT`, `WS_PORT`, `GRPC_PORT`, and `MQTT_PORT`.
+- The server is intentionally simple and intended for local development and learning.
+- Student data is kept in memory inside `src/studentStore.js`.
+- The project does not start its own MQTT broker; it connects to an external broker.
+- The server binds to `0.0.0.0` for gRPC and HTTP services, so it can accept remote connections when the network/firewall allows it.

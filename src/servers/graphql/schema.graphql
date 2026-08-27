@@ -1,0 +1,18 @@
+type Student {
+  id: String!
+  name: String!
+  email: String
+  connectionId: String
+  connectedAt: String!
+}
+
+type Query {
+  hello: String!
+  status: String!
+  students: [Student!]!
+}
+
+type Mutation {
+  sendMessage(message: String!): String!
+  registerStudent(id: String!, name: String, email: String): Student!
+}

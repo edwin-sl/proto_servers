@@ -1,27 +1,11 @@
+ const fs = require('fs');
+ const path = require('path');
  const { ApolloServer, gql } = require('apollo-server-express');
-const { registerStudent, getStudents } = require('../../studentStore');
-const { logRequest, logResponse } = require('../../logger');
+ const { registerStudent, getStudents } = require('../../studentStore');
+ const { logRequest, logResponse } = require('../../logger');
 
-const typeDefs = gql`
-  type Student {
-    id: String!
-    name: String!
-    email: String
-    connectionId: String
-    connectedAt: String!
-  }
-
-  type Query {
-    hello: String!
-    status: String!
-    students: [Student!]!
-  }
-
-  type Mutation {
-    sendMessage(message: String!): String!
-    registerStudent(id: String!, name: String, email: String, connectionId: String): Student!
-  }
-`;
+ const schemaPath = path.join(__dirname, 'schema.graphql');
+ const typeDefs = gql`${fs.readFileSync(schemaPath, 'utf8')}`;
 
 const resolvers = {
   Query: {
@@ -41,13 +25,13 @@ const resolvers = {
       logResponse('GraphQL sendMessage', { response });
       return response;
     },
-    registerStudent: (_, { protocol, id, name, email, connectionId }) => {
+    registerStudent: (_, { protocol, id, name, email }) => {
       const student = registerStudent({
         protocol: 'GraphQL',
         id,
         name,
         email,
-        connectionId: connectionId || `graphql-${Date.now()}`
+        connectionId: `graphql-${Date.now()}`
       });
       logRequest('GraphQL registerStudent', { protocol, studentId: id, name, email });
       logResponse('GraphQL registerStudent', student);

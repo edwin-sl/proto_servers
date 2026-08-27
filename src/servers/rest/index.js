@@ -73,7 +73,7 @@ function createApp() {
       id: payload.id,
       name: payload.name,
       email: payload.email,
-      connectionId: payload.connectionId || `rest-${Date.now()}`
+      connectionId: `rest-${Date.now()}`
     });
     res.json({ ok: true, student, students: getStudents() });
   });

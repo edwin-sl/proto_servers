@@ -3,7 +3,10 @@ const { registerStudent, getStudents } = require('../../studentStore');
 const { logRequest, logResponse } = require('../../logger');
 
 function start(ports = {}, options = {}) {
-  const MQTT_URL = options.url || `${process.env.MQTT_URL}:${process.env.MQTT_PORT}` || 'mqtt://test.mosquitto.org:1883';
+  const MQTT_URL = options.url
+      || (process.env.MQTT_URL
+      ? `${process.env.MQTT_URL}:${process.env.MQTT_PORT}`
+      : 'mqtt://test.mosquitto.org:1883');
   const TOPIC = options.topic || 'students';
   const client = mqtt.connect(MQTT_URL);
 
@@ -39,7 +42,7 @@ function start(ports = {}, options = {}) {
     if (message.action === 'register') {
       const student = registerStudent({
         protocol: 'MQTT',
-        connectionId: message.connectionId || `mqtt-${Date.now()}`,
+        connectionId: `mqtt-${Date.now()}`,
         id: message.id,
         name: message.name,
         email: message.email
